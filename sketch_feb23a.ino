@@ -3,94 +3,84 @@
 
 MPU6050 mpu;
 
-// Pins
 #define SOUND_PIN 34
 #define VIB_PIN 25
 
+void setup()
+{
+Serial.begin(115200);
 
-// Thresholds (you can tune)
-#define FALL_THRESHOLD 1.1
-#define SOUND_THRESHOLD 50
+Wire.begin();
 
-void setup() {
-  Serial.begin(115200);
-  Wire.begin();
-  mpu.initialize();
-  if(!mpu.testConnection())
+mpu.initialize();
 
+pinMode(VIB_PIN, INPUT);
 
-
-  pinMode(VIB_PIN, INPUT);
-
-  Serial.println("System Initializing...");
-  
-  if (mpu.testConnection()) {
-    Serial.println("MPU6050 Connected");
-  } else {
-    Serial.println("MPU6050 Connection Failed");
-  }
+Serial.println("System Ready");
 }
 
-void loop() {
+void loop()
+{
 
-  // -------- MODULE 1: DATA ACQUISITION --------
-  
-  int soundValue = analogRead(SOUND_PIN);
-  int vibrationValue = digitalRead(VIB_PIN);
+int soundValue = analogRead(SOUND_PIN);
 
+int vibrationValue = digitalRead(VIB_PIN);
 
-  int16_t ax, ay, az;
+int16_t ax, ay, az;
 mpu.getAcceleration(&ax, &ay, &az);
 
-Serial.print("AX: "); Serial.print(ax);
-Serial.print(" AY: "); Serial.print(ay);
-Serial.print(" AZ: "); Serial.println(az);
-
-// -------- MODULE 2: PREPROCESSING --------
-
-// Convert acceleration to g units
+// convert to g
 float ax_g = ax / 16384.0;
 float ay_g = ay / 16384.0;
 float az_g = az / 16384.0;
 
-// Calculate magnitude
+// magnitude
 float accMagnitude = sqrt(ax_g*ax_g + ay_g*ay_g + az_g*az_g);
 
-
-
-// Simple smoothing for sound
+// smoothing sound
 static int prevSound = 0;
-int filteredSound = (prevSound + soundValue) / 2;
+int filteredSound = (prevSound + soundValue)/2;
 prevSound = soundValue;
 
-  // -------- MODULE 3: AI / DECISION LOGIC --------
+// AI decision logic
 int riskScore = 0;
 
-float delta = abs(accMagnitude - 1.0);
+// sound condition
+if(filteredSound > 150)
+riskScore += 1;
 
-if(delta > 1.5)
+// vibration condition
+if(vibrationValue == 1)
+riskScore += 1;
 
-if(accMagnitude > 1.5) riskScore += 2;
-if(filteredSound > 100) riskScore += 1;
-if(vibrationValue == 1) riskScore += 1;
+// acceleration condition
+if(accMagnitude > 1.2)
+riskScore += 1;
 
-String status = "SAFE";
+// heart rate condition (simulated)
 
+// danger decision
+String status="SAFE";
 
-if(riskScore >= 2) {
-  status = "DANGER";
+if(riskScore >= 1)
+status="DANGER";
 
-  }
+// output for python UI
 
-  // -------- SIMPLE UI OUTPUT --------
 Serial.print("SOUND:");
 Serial.print(filteredSound);
+
 Serial.print(",VIB:");
 Serial.print(vibrationValue);
+
 Serial.print(",ACC:");
 Serial.print(accMagnitude);
+
+Serial.print(",HR:");
+Serial.print(75);
+
 Serial.print(",STATUS:");
 Serial.println(status);
 
-  delay(700);
+delay(2000);
 }
